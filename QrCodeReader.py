@@ -28,8 +28,18 @@ def initDB() -> tuple[sl.Connection, sl.Cursor]:
 
     # Create new students table if it doesn't exist already
     cur.execute("""CREATE TABLE IF NOT EXISTS students(
-                name VARCHAR(20),
-                time_in TIMESTAMP)""")
+                    id INTEGER PRIMARY KEY,
+                    name VARCHAR(50) NOT NULL,
+                    student_id VARCHAR(50) NOT NULL,
+                    grad_year INTEGER NOT NULL)""")
+    
+    cur.execute("""CREATE UNIQUE INDEX IF NOT EXISTS student_id_idx ON students(student_id)""")
+    
+    cur.execute("""CREATE TABLE IF NOT EXISTS attendence(
+                    id INTEGER PRIMARY KEY,
+                    student_id INTEGER,
+                    time_in TIMESTAMP,
+                    FOREIGN KEY(student_id) REFERENCES students(id))""")
 
     # Return connection/cursor for later use
     return (con, cur)
