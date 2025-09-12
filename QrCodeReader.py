@@ -107,12 +107,21 @@ def processInput(input: str, db_cur: sl.Cursor, db_con: sl.Connection) -> Attend
 
     return fetchedRec
 
-def signalSuccess():
-    LOG("Success")
 
-def signalFailure():
+def signalSuccess(img, data, attendanceRec):
+    LOG("Success")
+    cv2.putText(img, f"Tracking {attendanceRec.name} ({data})",
+                (0, 64),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1, (100, 255, 100), 2)
+
+
+def signalFailure(img, data):
     LOG("Failed")
-    #Add code to signal that scan in failed
+    cv2.putText(img, f"Unrecognized ID {data}",
+                (0, 64),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1, (0, 0, 255), 2)
 
 
 def main():
@@ -142,23 +151,21 @@ def main():
         # Write the data from the QR code if detected
         # and display the formatted text above it on the gui
         if (bbox is not None):
-            cv2.putText(img, data,
-                        (int(bbox[0][0][0]), int(bbox[0][0][1]) - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        1, (255, 250, 120), 2)
-
             if data:
                 if not doesInputMatchRecord(data, cachedAttendanceRec):
                     cachedAttendanceRec = processInput(data, db_cur, db_con)
                 else:
                     LOG(f"{data} Matches Cached Record, skipping...")
 
-                if cachedAttendanceRec == None:
-                    signalFailure()
+                if cachedAttendanceRec is None:
+                    signalFailure(img, data)
                 else:
-                    signalSuccess()
+                    signalSuccess(img, data, cachedAttendanceRec)
 
         # Below will display the live camera feed to the Desktop
+        cv2.namedWindow("code detector", cv2.WINDOW_NORMAL)
+        cv2.setWindowProperty("code detector",
+                              cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         cv2.imshow("code detector", img)
 
         # Press Q to close the app
