@@ -1,8 +1,11 @@
 import cv2
+import csv
 import sqlite3 as sl
 import datetime
 
 DB_PATH = "./attendancedb.sqlite3"
+CSV_PATH = "./attendance_log.csv"
+
 
 class AttendanceRecord:
     def __init__(self, id: int, email: str, name: str, time_in: datetime.datetime):
@@ -11,9 +14,27 @@ class AttendanceRecord:
         self.name = name
         self.time_in = time_in
 
+
 def LOG(logStr: str):
-    #print to std out for now, make this log to a file later
+    # print to std out for now, make this log to a file later
     print(logStr)
+
+
+def writeCSV(cur: sl.Cursor) -> None:
+    cur.execute("""SELECT * FROM attendance""")
+    tracked_students = cur.fetchall()
+
+    with open(CSV_PATH, 'w', newline='') as csvfile:
+        fieldnames = ['name', 'email', 'time_in']
+        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+        writer.writeheader()
+        for student in tracked_students:
+            cur.execute("""SELECT name, email FROM students WHERE id = ?;""", (student[0],))
+            data = cur.fetchone()
+            writer.writerow({'email': data[0],
+                             'name': data[1],
+                             'time_in': student[2]})
+
 
 # sqlite3 doesn't like default datetime.datetime adapters, so we register ours
 def adaptDate(date: datetime.datetime) -> str:
@@ -107,12 +128,21 @@ def processInput(input: str, db_cur: sl.Cursor, db_con: sl.Connection) -> Attend
 
     return fetchedRec
 
-def signalSuccess():
-    LOG("Success")
 
-def signalFailure():
+def signalSuccess(img, data, attendanceRec):
+    LOG("Success")
+    cv2.putText(img, f"Tracking {attendanceRec.name} ({data})",
+                (0, 64),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1, (100, 255, 100), 2)
+
+
+def signalFailure(img, data):
     LOG("Failed")
-    #Add code to signal that scan in failed
+    cv2.putText(img, f"Unrecognized ID {data}",
+                (0, 64),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1, (0, 0, 255), 2)
 
 
 def main():
@@ -142,23 +172,21 @@ def main():
         # Write the data from the QR code if detected
         # and display the formatted text above it on the gui
         if (bbox is not None):
-            cv2.putText(img, data,
-                        (int(bbox[0][0][0]), int(bbox[0][0][1]) - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        1, (255, 250, 120), 2)
-
             if data:
                 if not doesInputMatchRecord(data, cachedAttendanceRec):
                     cachedAttendanceRec = processInput(data, db_cur, db_con)
                 else:
                     LOG(f"{data} Matches Cached Record, skipping...")
 
-                if cachedAttendanceRec == None:
-                    signalFailure()
+                if cachedAttendanceRec is None:
+                    signalFailure(img, data)
                 else:
-                    signalSuccess()
+                    signalSuccess(img, data, cachedAttendanceRec)
 
         # Below will display the live camera feed to the Desktop
+        cv2.namedWindow("code detector", cv2.WINDOW_NORMAL)
+        cv2.setWindowProperty("code detector",
+                              cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         cv2.imshow("code detector", img)
 
         # Press Q to close the app
@@ -168,6 +196,8 @@ def main():
     # When the code is stopped the below closes all the applications/windows
     cap.release()
     cv2.destroyAllWindows()
+
+    writeCSV(db_cur)
 
     # Close connection to db when done
     db_con.close()
