@@ -22,7 +22,7 @@ def LOG(logStr: str):
     logger.info(logStr)
 
 
-def writeCSV(cur: sl.Cursors) -> None:
+def writeCSV(cur: sl.Cursor) -> None:
     qry = """SELECT students.id, students.email, students.name, attendance.student_id, attendance.time_in 
                     FROM attendance LEFT JOIN students ON attendance.student_id = students.id"""
     cur.execute(qry)
