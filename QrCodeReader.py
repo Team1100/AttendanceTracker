@@ -2,10 +2,13 @@ import cv2
 import csv
 import sqlite3 as sl
 import datetime
+import logging
 
 DB_PATH = "./attendancedb.sqlite3"
 CSV_PATH = "./attendance_log.csv"
 
+
+logger = logging.getLogger(__name__)
 
 class AttendanceRecord:
     def __init__(self, id: int, email: str, name: str, time_in: datetime.datetime):
@@ -16,12 +19,13 @@ class AttendanceRecord:
 
 
 def LOG(logStr: str):
-    # print to std out for now, make this log to a file later
-    print(logStr)
+    logger.info(logStr)
 
 
 def writeCSV(cur: sl.Cursor) -> None:
-    cur.execute("""SELECT * FROM attendance""")
+    qry = """SELECT students.id, students.email, students.name, attendance.student_id, attendance.time_in 
+                    FROM attendance LEFT JOIN students ON attendance.student_id = students.id"""
+    cur.execute(qry)
     tracked_students = cur.fetchall()
 
     with open(CSV_PATH, 'w', newline='') as csvfile:
@@ -29,11 +33,9 @@ def writeCSV(cur: sl.Cursor) -> None:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
         for student in tracked_students:
-            cur.execute("""SELECT name, email FROM students WHERE id = ?;""", (student[0],))
-            data = cur.fetchone()
-            writer.writerow({'email': data[0],
-                             'name': data[1],
-                             'time_in': student[2]})
+            writer.writerow({'name': student[2],
+                             'email': student[1],
+                             'time_in': student[4]})
 
 
 # sqlite3 doesn't like default datetime.datetime adapters, so we register ours
@@ -146,6 +148,8 @@ def signalFailure(img, data):
 
 
 def main():
+    logging.basicConfig(filename="attendanceTracker.log", level=logging.INFO)
+    LOG("Starting Up")
     # Initialize the students db with name and students
     db_con, db_cur = initDB()
 
@@ -202,6 +206,7 @@ def main():
     # Close connection to db when done
     db_con.close()
 
+    LOG("Shutting Down...")
 
 if __name__ == "__main__":
     main()
