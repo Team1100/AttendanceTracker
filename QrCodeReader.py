@@ -5,7 +5,7 @@ import datetime
 import logging
 
 DB_PATH = "./attendancedb.sqlite3"
-CSV_PATH = "./attendance_log.csv"
+CSV_BASE_PATH = "attendance_log.csv"
 
 
 logger = logging.getLogger(__name__)
@@ -22,21 +22,42 @@ def LOG(logStr: str):
     logger.info(logStr)
 
 
-def writeCSV(cur: sl.Cursor) -> None:
-    qry = """SELECT students.id, students.email, students.name, attendance.student_id, attendance.time_in 
-                    FROM attendance LEFT JOIN students ON attendance.student_id = students.id"""
+def getDaysAttendanceRecords(date: datetime.datetime, cur:sl.Cursor) -> list[tuple[int, str, str, int, datetime.datetime]]:
+    start = adaptDate(datetime.datetime(date.year, date.month, date.day, 0, 0, 0, 0))
+    end = adaptDate(datetime.datetime(date.year, date.month, date.day, 23, 59, 59, 999))
+
+    LOG(f"Getting attendance records between {start} and {end}")
+
+    qry = f"""SELECT students.id, students.email, students.name, attendance.student_id, attendance.time_in
+             FROM attendance LEFT JOIN students ON attendance.student_id = students.id 
+             WHERE attendance.time_in BETWEEN \"{start}\" AND \"{end}\""""
     cur.execute(qry)
     tracked_students = cur.fetchall()
+    LOG(f"Got {len(tracked_students)} records")
+    return tracked_students
 
-    with open(CSV_PATH, 'w', newline='') as csvfile:
+#
+def writeCSV(csvPath: str, attendance_records: list[tuple[int, str, str, int, datetime.datetime]]) -> None:
+    with open(csvPath, 'w', newline='') as csvfile:
         fieldnames = ['name', 'email', 'time_in']
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         writer.writeheader()
-        for student in tracked_students:
+        for student in attendance_records:
             writer.writerow({'name': student[2],
                              'email': student[1],
                              'time_in': student[4]})
-
+            
+def uploadCSV(csvPath: str) -> None:
+    LOG(f"Uploading CSV file: {csvPath}")
+            
+def processDaysRecords(date: datetime.datetime, cur: sl.Cursor) -> None:
+    records = getDaysAttendanceRecords(date, cur)
+    csvPath = f"./{date.date().isoformat()}.{CSV_BASE_PATH}"
+    if len(records) > 0:
+        writeCSV(csvPath, records)
+        uploadCSV(csvPath)
+    else:
+        LOG(f"No records found for {date.date().isoformat()}. Skipping CSV dump and upload")
 
 # sqlite3 doesn't like default datetime.datetime adapters, so we register ours
 def adaptDate(date: datetime.datetime) -> str:
@@ -160,6 +181,7 @@ def main():
     detector = cv2.QRCodeDetector()
 
     cachedAttendanceRec: AttendanceRecord = None
+    previousLoopTime = datetime.datetime.now()
 
     # Infinite loop to constantly search while active
     while True:
@@ -193,6 +215,14 @@ def main():
                               cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
         cv2.imshow("code detector", img)
 
+        #Dump the previous day when the day changes(midnight)
+        currentLoopTime = datetime.datetime.now()
+        if currentLoopTime.date() != previousLoopTime.date():
+            LOG(f"Processing records for {previousLoopTime.date().isoformat()}")
+            processDaysRecords(previousLoopTime, db_cur)
+
+        previousLoopTime = currentLoopTime
+
         # Press Q to close the app
         if (cv2.waitKey(1) == ord("q")):
             break
@@ -200,8 +230,6 @@ def main():
     # When the code is stopped the below closes all the applications/windows
     cap.release()
     cv2.destroyAllWindows()
-
-    writeCSV(db_cur)
 
     # Close connection to db when done
     db_con.close()
