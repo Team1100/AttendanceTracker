@@ -157,7 +157,7 @@ def processInput(input: str, db_cur: sl.Cursor, db_con: sl.Connection) -> Attend
 
 def signalSuccess(img, data, attendanceRec):
     LOG("Success")
-    cv2.putText(img, f"Tracking {attendanceRec.name} ({data})",
+    cv2.putText(img, f"Sign-in Successful. Welcome {attendanceRec.name} ({data})",
                 (0, 64),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1, (100, 255, 100), 2)
