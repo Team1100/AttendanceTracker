@@ -169,6 +169,12 @@ def signalFailure(img, data):
                 (0, 64),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1, (0, 0, 255), 2)
+    
+def signalError(img, errorMsg):
+    cv2.putText(img, errorMsg,
+                (50, 1000),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1, (0,0,255), 2)
 
 
 def main():
@@ -185,6 +191,7 @@ def main():
 
     cachedAttendanceRec: AttendanceRecord = None
     previousLoopTime = datetime.datetime.now()
+    stickyErrorMessage = None
 
     # Infinite loop to constantly search while active
     while True:
@@ -212,6 +219,9 @@ def main():
                 else:
                     signalSuccess(img, data, cachedAttendanceRec)
 
+        if stickyErrorMessage is not None:
+            signalError(img, stickyErrorMessage)
+
         # Below will display the live camera feed to the Desktop
         cv2.namedWindow("code detector", cv2.WINDOW_NORMAL)
         cv2.setWindowProperty("code detector",
@@ -222,12 +232,20 @@ def main():
         currentLoopTime = datetime.datetime.now()
         if currentLoopTime.date() != previousLoopTime.date():
             LOG(f"Processing records for {previousLoopTime.date().isoformat()}")
-            processDaysRecords(previousLoopTime, db_cur)
+            try:
+                processDaysRecords(previousLoopTime, db_cur)
+            except Exception as e:
+                logger.error(f"Failed to process records for {previousLoopTime.date().isoformat()}. Exception:{e}")
+                stickyErrorMessage = "Nightly processing failed. Please inform a software leadership"
 
         previousLoopTime = currentLoopTime
 
+        keyPress = cv2.waitKey(1)
+        #press C to clear errors
+        if(keyPress == ord("c")):
+            stickyErrorMessage = None
         # Press Q to close the app
-        if (cv2.waitKey(1) == ord("q")):
+        if (keyPress == ord("q")):
             break
 
     # When the code is stopped the below closes all the applications/windows
