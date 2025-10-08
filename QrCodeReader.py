@@ -4,6 +4,8 @@ import sqlite3 as sl
 import datetime
 import logging
 
+import GSheetsUploader
+
 DB_PATH = "./attendancedb.sqlite3"
 CSV_BASE_PATH = "attendance_log.csv"
 
@@ -47,15 +49,16 @@ def writeCSV(csvPath: str, attendance_records: list[tuple[int, str, str, int, da
                              'email': student[1],
                              'time_in': student[4]})
             
-def uploadCSV(csvPath: str) -> None:
+def uploadCSV(csvPath: str, date: datetime.date) -> None:
     LOG(f"Uploading CSV file: {csvPath}")
+    GSheetsUploader.uploadCsvFile(csvPath, date)
             
 def processDaysRecords(date: datetime.datetime, cur: sl.Cursor) -> None:
     records = getDaysAttendanceRecords(date, cur)
     csvPath = f"./{date.date().isoformat()}.{CSV_BASE_PATH}"
     if len(records) > 0:
         writeCSV(csvPath, records)
-        uploadCSV(csvPath)
+        uploadCSV(csvPath, date.date())
     else:
         LOG(f"No records found for {date.date().isoformat()}. Skipping CSV dump and upload")
 
