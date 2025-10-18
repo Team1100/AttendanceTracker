@@ -157,8 +157,12 @@ def processInput(input: str, db_cur: sl.Cursor, db_con: sl.Connection) -> Attend
 
 def signalSuccess(img, data, attendanceRec):
     LOG("Success")
-    cv2.putText(img, f"Sign-in Successful. Welcome {attendanceRec.name} ({data})",
+    cv2.putText(img, f"Sign-in Successful",
                 (0, 64),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1, (100, 255, 100), 2)
+    cv2.putText(img, f"Welcome {attendanceRec.name} ({data})",
+                (0, 94),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1, (100, 255, 100), 2)
 
@@ -172,7 +176,7 @@ def signalFailure(img, data):
     
 def signalError(img, errorMsg):
     cv2.putText(img, errorMsg,
-                (50, 1000),
+                (50, img.shape[0]-20),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1, (0,0,255), 2)
 
@@ -236,7 +240,7 @@ def main():
                 processDaysRecords(previousLoopTime, db_cur)
             except Exception as e:
                 logger.error(f"Failed to process records for {previousLoopTime.date().isoformat()}. Exception:{e}")
-                stickyErrorMessage = "Nightly processing failed. Please inform a software leadership"
+                stickyErrorMessage = "Nightly processing failed. Please inform software leadership"
 
         previousLoopTime = currentLoopTime
 
