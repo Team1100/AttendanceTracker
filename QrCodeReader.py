@@ -202,7 +202,7 @@ def main():
 
     cachedAttendanceRec: AttendanceRecord = None
     previousLoopTime = datetime.datetime.now()
-    stickyErrorMessage = ["Nightly processing failed","Please inform software leadership"]
+    stickyErrorMessage = None
 
     # Infinite loop to constantly search while active
     while True:
