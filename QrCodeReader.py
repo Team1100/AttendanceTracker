@@ -20,8 +20,8 @@ class AttendanceRecord:
         self.time_in = time_in
 
 
-def LOG(logStr: str):
-    logger.info(logStr)
+def LOG(*logStrs: str):
+    logger.info(logStrs)
 
 
 def getDaysAttendanceRecords(date: datetime.datetime, cur:sl.Cursor) -> list[tuple[int, str, str, int, datetime.datetime]]:
@@ -158,11 +158,15 @@ def processInput(input: str, db_cur: sl.Cursor, db_con: sl.Connection) -> Attend
 def signalSuccess(img, data, attendanceRec):
     LOG("Success")
     cv2.putText(img, f"Sign-in Successful",
-                (0, 64),
+                (10, 64),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1, (100, 255, 100), 2)
-    cv2.putText(img, f"Welcome {attendanceRec.name} ({data})",
-                (0, 94),
+    cv2.putText(img, f"Welcome {attendanceRec.name}",
+                (10, 94),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1, (100, 255, 100), 2)
+    cv2.putText(img, f"({data})",
+                (10, 124),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1, (100, 255, 100), 2)
 
@@ -170,15 +174,18 @@ def signalSuccess(img, data, attendanceRec):
 def signalFailure(img, data):
     LOG("Failed")
     cv2.putText(img, f"Unrecognized ID {data}",
-                (0, 64),
+                (10, 64),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 1, (0, 0, 255), 2)
     
-def signalError(img, errorMsg):
-    cv2.putText(img, errorMsg,
-                (50, img.shape[0]-20),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                1, (0,0,255), 2)
+def signalError(img, errorMsg: list[str]):
+    startOffset = 20 + (35 * (len(errorMsg) - 1))
+    for index,msg in enumerate(errorMsg):
+        height = img.shape[0] - (startOffset - (index * 35))
+        cv2.putText(img, msg,
+                    (10, height),
+                    cv2.FONT_HERSHEY_SIMPLEX,
+                    1, (0,0,255), 2)
 
 
 def main():
@@ -195,7 +202,7 @@ def main():
 
     cachedAttendanceRec: AttendanceRecord = None
     previousLoopTime = datetime.datetime.now()
-    stickyErrorMessage = None
+    stickyErrorMessage = ["Nightly processing failed","Please inform software leadership"]
 
     # Infinite loop to constantly search while active
     while True:
@@ -240,7 +247,7 @@ def main():
                 processDaysRecords(previousLoopTime, db_cur)
             except Exception as e:
                 logger.error(f"Failed to process records for {previousLoopTime.date().isoformat()}. Exception:{e}")
-                stickyErrorMessage = "Nightly processing failed. Please inform software leadership"
+                stickyErrorMessage = ["Nightly processing failed","Please inform software leadership"]
 
         previousLoopTime = currentLoopTime
 
