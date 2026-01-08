@@ -20,4 +20,12 @@ with open(csvPath) as csvFile:
         name = row[2]
         print(f"Generating QR Code of {email} for {name}")
         img = qrcode.make(email)
-        img.save(f"{outputDir}/{name}.png")
+        fileName = name.replace(" ", "")
+        studentDir = f"{outputDir}/{fileName}"
+        if not os.path.exists(studentDir):
+            os.makedirs(studentDir)
+        img.save(f"{studentDir}/{fileName}.png")
+        if not os.path.exists(f"{studentDir}/email.txt"):
+            with open(f"{studentDir}/email.txt", "w") as emailFile:
+                emailFile.write(email);
+
