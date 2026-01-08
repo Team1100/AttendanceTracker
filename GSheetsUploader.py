@@ -16,7 +16,7 @@ def uploadCsvFile(csvPath: str, date: datetime.date):
     creds = getCredentials()
     sheetsClient = gspread.authorize(creds)
     spreadsheet = sheetsClient.open_by_key(SPREADSHEET_FILE_ID)
-    worksheet = spreadsheet.add_worksheet(title=date.isoformat(), rows=0, cols=0)
+    worksheet = spreadsheet.get_worksheet(2);
     with open(csvPath) as csvFile:
         content = list(csv.reader(csvFile))
         worksheet.append_rows(content)
