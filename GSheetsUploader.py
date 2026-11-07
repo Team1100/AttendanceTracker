@@ -1,6 +1,7 @@
 import csv
-import json
 import datetime
+import sys
+import os
 from google.oauth2 import service_account
 import gspread
 
@@ -21,3 +22,16 @@ def uploadCsvFile(csvPath: str, date: datetime.date):
         content = list(csv.reader(csvFile))
         content.pop(0)
         worksheet.append_rows(content)
+
+
+if __name__ == "__main__":
+    if(len(sys.argv) != 2):
+        print("ERROR: Incorrect number of arguments. Expects only path to CSV file to upload")
+        exit()
+
+    path = sys.argv[1]
+    if not os.path.isfile(path):
+        print(f"ERROR: Provided path:{path} is not a file")
+        exit()
+
+    uploadCsvFile(path, datetime.datetime.now().date())

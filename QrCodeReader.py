@@ -3,6 +3,7 @@ import csv
 import sqlite3 as sl
 import datetime
 import logging
+import time
 
 import GSheetsUploader
 
@@ -51,7 +52,22 @@ def writeCSV(csvPath: str, attendance_records: list[tuple[int, str, str, int, da
             
 def uploadCSV(csvPath: str, date: datetime.date) -> None:
     LOG(f"Uploading CSV file: {csvPath}")
-    GSheetsUploader.uploadCsvFile(csvPath, date)
+    uploaded=False
+    tries=0
+    maxRetries=60
+    sleepTime=60
+    while(not uploaded):
+        try:
+            GSheetsUploader.uploadCsvFile(csvPath, date)
+            uploaded=True
+        except Exception as e:
+            LOG(f"Error encountered uploading csv file {csvPath}. Exception: {e}")
+            if tries >= maxRetries:
+                raise e
+            else:
+                tries += 1
+                time.sleep(sleepTime)
+            
             
 def processDaysRecords(date: datetime.datetime, cur: sl.Cursor) -> None:
     records = getDaysAttendanceRecords(date, cur)
