@@ -2,4 +2,5 @@
 *.csv
 *.json
 *.log
-qr_codes/*
+qr_codes*/*
+.DS_Store
